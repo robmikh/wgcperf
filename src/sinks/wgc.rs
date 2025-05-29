@@ -1,4 +1,7 @@
-use std::sync::{Arc, atomic::AtomicUsize};
+use std::{
+    sync::{Arc, atomic::AtomicUsize},
+    time::Duration,
+};
 
 use windows::{
     Foundation::TypedEventHandler,
@@ -58,6 +61,9 @@ impl WgcCaptureSink {
         if use_dirty_rects {
             session.SetDirtyRegionMode(GraphicsCaptureDirtyRegionMode::ReportAndRender)?;
         }
+        // There's a bug where setting 0 won't work until we set something non-zero first
+        session.SetMinUpdateInterval(Duration::from_millis(1).into())?;
+        session.SetMinUpdateInterval(Duration::from_millis(0).into())?;
         Ok(Self {
             _item: item,
             session,
