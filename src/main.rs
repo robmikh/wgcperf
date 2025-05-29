@@ -55,6 +55,7 @@ fn main() -> Result<()> {
     let test_duration = Duration::from_millis(args.duration);
     let rest_duration = Duration::from_millis(args.rest);
     let verbose = args.verbose;
+    let adhoc_mode = args.adhoc;
 
     unsafe {
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)?;
@@ -206,38 +207,50 @@ fn main() -> Result<()> {
     }
     println!();
 
-    // Record baseline
-    println!("Recording baseline...");
-    let baseline_samples = run_test(&ui_queue, test_duration, pid, &adapters, verbose)?;
-    print_averages(&adapters, &baseline_samples);
-    println!();
+    if !adhoc_mode {
+        // Run the test as normal
 
-    // Record WGC
-    println!("Recording WGC...");
-    let mut wgc_sink = WgcCaptureSink::new(&d3d_device, monitor_handle)?;
-    let _wgc_samples = run_and_print_test(
-        &mut wgc_sink,
-        &ui_queue,
-        test_duration,
-        rest_duration,
-        pid,
-        &adapters,
-        verbose,
-    )?;
+        // Record baseline
+        println!("Recording baseline...");
+        let baseline_samples = run_test(&ui_queue, test_duration, pid, &adapters, verbose)?;
+        print_averages(&adapters, &baseline_samples);
+        println!();
 
-    // Record DDA
-    println!("Recording DDA...");
-    let output: IDXGIOutput1 = output.cast()?;
-    let mut dda_sink = DdaCaptureSink::new(&d3d_device, output)?;
-    let _dda_samples = run_and_print_test(
-        &mut dda_sink,
-        &ui_queue,
-        test_duration,
-        rest_duration,
-        pid,
-        &adapters,
-        verbose,
-    )?;
+        // Record WGC
+        println!("Recording WGC...");
+        let mut wgc_sink = WgcCaptureSink::new(&d3d_device, monitor_handle)?;
+        let _wgc_samples = run_and_print_test(
+            &mut wgc_sink,
+            &ui_queue,
+            test_duration,
+            rest_duration,
+            pid,
+            &adapters,
+            verbose,
+        )?;
+
+        // Record DDA
+        println!("Recording DDA...");
+        let output: IDXGIOutput1 = output.cast()?;
+        let mut dda_sink = DdaCaptureSink::new(&d3d_device, output)?;
+        let _dda_samples = run_and_print_test(
+            &mut dda_sink,
+            &ui_queue,
+            test_duration,
+            rest_duration,
+            pid,
+            &adapters,
+            verbose,
+        )?;
+    } else {
+        // Run WGC until the user says stop
+
+        let mut wgc_sink = WgcCaptureSink::new(&d3d_device, monitor_handle)?;
+        wgc_sink.start()?;
+        println!("Press ENTER to stop...");
+        std::io::Read::read(&mut std::io::stdin(), &mut [0]).unwrap();
+        wgc_sink.stop()?;
+    }
 
     // Shut down the UI thread and the window
     window.close();

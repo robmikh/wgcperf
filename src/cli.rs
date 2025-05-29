@@ -18,4 +18,8 @@ pub struct Cli {
     /// Enables verbose output.
     #[clap(short, long)]
     pub verbose: bool,
+
+    /// Enables verbose output.
+    #[clap(long, conflicts_with = "duration", conflicts_with = "rest")]
+    pub adhoc: bool,
 }
