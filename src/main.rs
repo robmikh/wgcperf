@@ -178,7 +178,7 @@ fn main() -> Result<()> {
     println!("Recording baseline...");
     let baseline_samples =
         PerfSession::run_on_thread(&ui_queue, test_duration, pid, &adapters, verbose)?;
-    let averages: Vec<_> = baseline_samples
+    let baseline_averages: Vec<_> = baseline_samples
         .iter()
         .map(|x| {
             if !x.is_empty() {
@@ -190,7 +190,7 @@ fn main() -> Result<()> {
         })
         .collect();
     println!("Average GPU 3D engine utilization by adapter:");
-    for (i, (adapter, utilization)) in adapters.iter().zip(averages).enumerate() {
+    for (i, (adapter, utilization)) in adapters.iter().zip(&baseline_averages).enumerate() {
         println!("  {} - {:6.2}% - {}", i, utilization, adapter.name);
     }
     println!();
