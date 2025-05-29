@@ -1,14 +1,14 @@
-use windows::core::Result;
 use windows::Win32::Foundation::HMODULE;
 use windows::Win32::Graphics::Direct3D11::D3D11_CREATE_DEVICE_DEBUG;
 use windows::Win32::Graphics::{
     Direct3D::{D3D_DRIVER_TYPE, D3D_DRIVER_TYPE_HARDWARE, D3D_DRIVER_TYPE_WARP},
     Direct3D11::{
-        D3D11CreateDevice, ID3D11Device, D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-        D3D11_CREATE_DEVICE_FLAG, D3D11_SDK_VERSION,
+        D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_CREATE_DEVICE_FLAG, D3D11_SDK_VERSION,
+        D3D11CreateDevice, ID3D11Device,
     },
     Dxgi::DXGI_ERROR_UNSUPPORTED,
 };
+use windows::core::Result;
 
 fn create_d3d_device_with_type(
     driver_type: D3D_DRIVER_TYPE,

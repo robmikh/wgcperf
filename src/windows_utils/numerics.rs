@@ -1,6 +1,4 @@
-use windows::{
-    Graphics::SizeInt32,
-};
+use windows::Graphics::SizeInt32;
 use windows_numerics::{Matrix3x2, Vector2};
 
 pub trait ToVector2 {

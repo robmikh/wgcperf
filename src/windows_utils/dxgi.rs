@@ -1,6 +1,6 @@
 use windows::{
-    core::Result,
     Win32::Graphics::Dxgi::{IDXGIAdapter1, IDXGIFactory1},
+    core::Result,
 };
 
 pub struct DxgiAdapterIterator<'a> {

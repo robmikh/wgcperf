@@ -1,16 +1,16 @@
 use windows::{
-    core::Result,
     System::DispatcherQueueController,
     Win32::{
         System::WinRT::{
-            CreateDispatcherQueueController, DispatcherQueueOptions,
-            DISPATCHERQUEUE_THREAD_APARTMENTTYPE, DISPATCHERQUEUE_THREAD_TYPE, DQTAT_COM_NONE,
-            DQTYPE_THREAD_CURRENT,
+            CreateDispatcherQueueController, DISPATCHERQUEUE_THREAD_APARTMENTTYPE,
+            DISPATCHERQUEUE_THREAD_TYPE, DQTAT_COM_NONE, DQTYPE_THREAD_CURRENT,
+            DispatcherQueueOptions,
         },
         UI::WindowsAndMessaging::{
-            DispatchMessageW, GetMessageW, PostQuitMessage, TranslateMessage, MSG,
+            DispatchMessageW, GetMessageW, MSG, PostQuitMessage, TranslateMessage,
         },
     },
+    core::Result,
 };
 use windows_future::AsyncActionCompletedHandler;
 
@@ -46,7 +46,7 @@ pub fn shutdown_dispatcher_queue_controller_and_wait(
     let mut message = MSG::default();
     unsafe {
         while GetMessageW(&mut message, None, 0, 0).into() {
-            TranslateMessage(&message);
+            let _ = TranslateMessage(&message);
             DispatchMessageW(&message);
         }
     }

@@ -1,7 +1,6 @@
 use std::sync::Once;
 
 use windows::{
-    core::{w, Result, HSTRING, PCWSTR},
     Graphics::SizeInt32,
     Win32::{
         Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM},
@@ -9,15 +8,16 @@ use windows::{
         UI::{
             HiDpi::{AdjustWindowRectExForDpi, GetDpiForWindow},
             WindowsAndMessaging::{
-                CreateWindowExW, DefWindowProcW, DestroyWindow, GetClientRect, GetWindowLongPtrW,
-                LoadCursorW, PostQuitMessage, RegisterClassW, SetWindowLongPtrW, SetWindowPos,
-                ShowWindow, CREATESTRUCTW, CW_USEDEFAULT, GWLP_USERDATA, IDC_ARROW, SWP_NOACTIVATE,
-                SWP_NOMOVE, SWP_NOZORDER, SW_SHOW, WM_DESTROY, WM_DPICHANGED, WM_LBUTTONDOWN,
-                WM_MOUSEMOVE, WM_NCCREATE, WM_RBUTTONDOWN, WM_SIZE, WM_SIZING, WNDCLASSW,
-                WS_EX_NOREDIRECTIONBITMAP, WS_OVERLAPPEDWINDOW,
+                CREATESTRUCTW, CW_USEDEFAULT, CreateWindowExW, DefWindowProcW, DestroyWindow,
+                GWLP_USERDATA, GetClientRect, GetWindowLongPtrW, IDC_ARROW, LoadCursorW,
+                PostQuitMessage, RegisterClassW, SW_SHOW, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOZORDER,
+                SetWindowLongPtrW, SetWindowPos, ShowWindow, WM_DESTROY, WM_DPICHANGED,
+                WM_LBUTTONDOWN, WM_MOUSEMOVE, WM_NCCREATE, WM_RBUTTONDOWN, WM_SIZE, WM_SIZING,
+                WNDCLASSW, WS_EX_NOREDIRECTIONBITMAP, WS_OVERLAPPEDWINDOW,
             },
         },
     },
+    core::{HSTRING, PCWSTR, Result, w},
 };
 use windows_numerics::Vector2;
 

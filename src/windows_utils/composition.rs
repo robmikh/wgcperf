@@ -1,15 +1,15 @@
 use windows::{
-    core::{Param, IUnknown, Interface, Result},
+    UI::Composition::{
+        CompositionDrawingSurface, CompositionGraphicsDevice, Compositor,
+        Desktop::DesktopWindowTarget,
+    },
     Win32::{
         Foundation::{HWND, POINT, RECT},
         System::WinRT::Composition::{
             ICompositionDrawingSurfaceInterop, ICompositorDesktopInterop, ICompositorInterop,
         },
     },
-    UI::Composition::{
-        CompositionDrawingSurface, CompositionGraphicsDevice, Compositor,
-        Desktop::DesktopWindowTarget,
-    },
+    core::{IUnknown, Interface, Param, Result},
 };
 
 pub trait CompositionInterop {
