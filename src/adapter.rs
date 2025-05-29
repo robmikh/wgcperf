@@ -1,12 +1,7 @@
 use windows::{
-    Win32::{
-        Foundation::LUID,
-        Graphics::Dxgi::{IDXGIAdapter1, IDXGIFactory1},
-    },
+    Win32::{Foundation::LUID, Graphics::Dxgi::IDXGIAdapter1},
     core::Result,
 };
-
-use crate::windows_utils::dxgi::DxgiAdapterIter;
 
 pub struct Adapter {
     pub name: String,
@@ -28,14 +23,5 @@ impl Adapter {
 
             Ok(Self { name, luid })
         }
-    }
-
-    pub fn from_dxgi_factory(factory: &IDXGIFactory1) -> Result<Vec<Self>> {
-        let mut adapters = Vec::new();
-        for dxgi_adapter in factory.iter_adapters() {
-            let adapter = Self::from_dxgi_adapter(&dxgi_adapter)?;
-            adapters.push(adapter);
-        }
-        Ok(adapters)
     }
 }

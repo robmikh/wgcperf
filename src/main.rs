@@ -18,7 +18,7 @@ use windows::{
     System::{DispatcherQueue, DispatcherQueueController, DispatcherQueueHandler},
     UI::{
         Color,
-        Composition::{AnimationIterationBehavior, Compositor, Core::CompositorController},
+        Composition::{AnimationIterationBehavior, Core::CompositorController},
     },
     Win32::{
         Foundation::HWND,
@@ -27,15 +27,12 @@ use windows::{
             Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MONITORINFO, MonitorFromWindow},
         },
         System::{
-            WinRT::{RO_INIT_MULTITHREADED, RO_INIT_SINGLETHREADED, RoInitialize},
+            WinRT::{RO_INIT_MULTITHREADED, RoInitialize},
             WindowsProgramming::MulDiv,
         },
-        UI::{
-            HiDpi::{
-                DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, GetDpiForMonitor, MDT_EFFECTIVE_DPI,
-                SetProcessDpiAwarenessContext,
-            },
-            WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, TranslateMessage},
+        UI::HiDpi::{
+            DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, GetDpiForMonitor, MDT_EFFECTIVE_DPI,
+            SetProcessDpiAwarenessContext,
         },
     },
     core::{Interface, Result, h},
@@ -43,12 +40,9 @@ use windows::{
 use windows_numerics::{Vector2, Vector3};
 use windows_utils::{
     composition::CompositionInterop,
-    d3d::{create_d3d_device, create_d3d_device_on_adapter},
-    dispatcher_queue::shutdown_dispatcher_queue_controller_and_wait,
+    d3d::create_d3d_device_on_adapter,
     dxgi::{DxgiAdapterIter, DxgiOutputIter},
 };
-
-use crate::windows_utils::dispatcher_queue::create_dispatcher_queue_controller_for_current_thread;
 
 fn main() -> Result<()> {
     // TODO: Parse args

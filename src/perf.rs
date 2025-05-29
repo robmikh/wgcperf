@@ -70,11 +70,17 @@ impl PerfTracker {
         Ok(utilization_value)
     }
 
-    pub fn close(mut self) -> Result<()> {
+    pub fn close(&mut self) -> Result<()> {
         self.query_handle.close_query()
     }
 
     fn collect_query_data(&self) -> Result<()> {
         unsafe { PDH_FUNCTION(PdhCollectQueryData(self.query_handle.0)).ok() }
+    }
+}
+
+impl Drop for PerfTracker {
+    fn drop(&mut self) {
+        let _ = self.close();
     }
 }

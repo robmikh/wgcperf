@@ -1,17 +1,14 @@
-use std::{os::windows::raw::HANDLE, thread::JoinHandle};
+use std::thread::JoinHandle;
 
 use windows::{
-    Win32::{
-        Graphics::{
-            Direct3D11::ID3D11Device,
-            Dxgi::{DXGI_OUTDUPL_FRAME_INFO, IDXGIOutput1, IDXGIOutputDuplication},
-        },
-        System::Threading::INFINITE,
+    Win32::Graphics::{
+        Direct3D11::ID3D11Device,
+        Dxgi::{DXGI_OUTDUPL_FRAME_INFO, IDXGIOutput1, IDXGIOutputDuplication},
     },
     core::Result,
 };
 
-use crate::windows_utils::event::{Event, EventTimeout};
+use crate::windows_utils::event::Event;
 
 use super::CaptureSink;
 

@@ -4,17 +4,14 @@ use windows::{
     Graphics::SizeInt32,
     Win32::{
         Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM},
-        System::{LibraryLoader::GetModuleHandleW, WindowsProgramming::MulDiv},
-        UI::{
-            HiDpi::{AdjustWindowRectExForDpi, GetDpiForWindow},
-            WindowsAndMessaging::{
-                CREATESTRUCTW, CW_USEDEFAULT, CreateWindowExW, DefWindowProcW, DestroyWindow,
-                GWLP_USERDATA, GetClientRect, GetWindowLongPtrW, IDC_ARROW, LoadCursorW,
-                PostQuitMessage, RegisterClassW, SW_SHOW, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOZORDER,
-                SetWindowLongPtrW, SetWindowPos, ShowWindow, WM_DESTROY, WM_DPICHANGED,
-                WM_LBUTTONDOWN, WM_MOUSEMOVE, WM_NCCREATE, WM_RBUTTONDOWN, WM_SIZE, WM_SIZING,
-                WNDCLASSW, WS_EX_NOREDIRECTIONBITMAP, WS_OVERLAPPEDWINDOW,
-            },
+        System::LibraryLoader::GetModuleHandleW,
+        UI::WindowsAndMessaging::{
+            CREATESTRUCTW, CreateWindowExW, DefWindowProcW, DestroyWindow, GWLP_USERDATA,
+            GetClientRect, GetWindowLongPtrW, IDC_ARROW, LoadCursorW, PostQuitMessage,
+            RegisterClassW, SW_SHOW, SWP_NOACTIVATE, SWP_NOZORDER, SetWindowLongPtrW, SetWindowPos,
+            ShowWindow, WM_DESTROY, WM_DPICHANGED, WM_LBUTTONDOWN, WM_MOUSEMOVE, WM_NCCREATE,
+            WM_RBUTTONDOWN, WM_SIZE, WM_SIZING, WNDCLASSW, WS_EX_NOREDIRECTIONBITMAP,
+            WS_OVERLAPPEDWINDOW,
         },
     },
     core::{HSTRING, PCWSTR, Result, w},
@@ -82,11 +79,9 @@ impl Window {
     }
 
     pub fn show(&self) {
-        unsafe { ShowWindow(self.handle, SW_SHOW) };
-    }
-
-    pub fn dpi(&self) -> u32 {
-        unsafe { GetDpiForWindow(self.handle) }
+        unsafe {
+            let _ = ShowWindow(self.handle, SW_SHOW);
+        };
     }
 
     fn message_handler(&mut self, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {

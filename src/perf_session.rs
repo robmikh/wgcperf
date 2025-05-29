@@ -16,7 +16,7 @@ use windows::{
 use crate::{adapter::Adapter, perf::PerfTracker};
 
 pub struct PerfSession {
-    inner: Arc<RwLock<PerfSessionInner>>,
+    _inner: Arc<RwLock<PerfSessionInner>>,
     receiver: Receiver<Vec<Vec<f64>>>,
 }
 
@@ -58,7 +58,10 @@ impl PerfSession {
             receiver.recv().unwrap()?
         };
 
-        let this = Self { inner, receiver };
+        let this = Self {
+            _inner: inner,
+            receiver,
+        };
         let samples = this.receiver.recv().unwrap();
 
         Ok(samples)

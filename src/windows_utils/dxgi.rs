@@ -1,7 +1,4 @@
-use windows::{
-    Win32::Graphics::Dxgi::{IDXGIAdapter1, IDXGIFactory1, IDXGIOutput},
-    core::Result,
-};
+use windows::Win32::Graphics::Dxgi::{IDXGIAdapter1, IDXGIFactory1, IDXGIOutput};
 
 pub struct DxgiAdapterIterator<'a> {
     factory: &'a IDXGIFactory1,
