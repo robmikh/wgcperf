@@ -7,7 +7,7 @@ edition = "2024"
 windows-collections = "=0.2.0"
 windows-future = "=0.2.1"
 windows-numerics = "=0.2.0"
-processdumper = { git = "https://github.com/robmikh/dwmdumper", rev = "356aa96726f877b822ffd26a5601c644c53eadbc" }
+processdumper = { git = "https://github.com/robmikh/dwmdumper", rev = "cded4243a704142f2dcc2b3b00870ba785f182c5" }
 #processdumper = { path = "../dwmdumper/processdumper" }
 
 [dependencies.windows]
@@ -19,6 +19,7 @@ features = [
     "Graphics",
     "Graphics_DirectX",
     "System",
+    "UI_Composition_Core",
     "UI_Composition_Desktop",
     "Win32_Foundation",
     "Win32_Graphics_Direct2D",

@@ -28,6 +28,9 @@ pub struct Window {
     handle: HWND,
 }
 
+// SAFETY: We only expose things that are safe to call from other threads. HWNDS are already thread safe.
+unsafe impl Send for Window {}
+
 impl Window {
     pub fn new(title: &str, x: i32, y: i32, width: u32, height: u32) -> Result<Box<Self>> {
         let instance = unsafe { GetModuleHandleW(None)? };

@@ -1,15 +1,20 @@
 mod pdh;
 mod perf;
+mod perf_session;
+mod pid;
 mod window;
 mod windows_utils;
 
-use std::time::Duration;
+use std::{sync::mpsc::channel, time::Duration};
 
+use perf_session::PerfSession;
+use pid::get_current_dwm_pid;
 use window::Window;
 use windows::{
+    System::{DispatcherQueueController, DispatcherQueueHandler},
     UI::{
         Color,
-        Composition::{AnimationIterationBehavior, Compositor},
+        Composition::{AnimationIterationBehavior, Compositor, Core::CompositorController},
     },
     Win32::{
         Foundation::HWND,
@@ -17,7 +22,7 @@ use windows::{
             GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MONITORINFO, MonitorFromWindow,
         },
         System::{
-            WinRT::{RO_INIT_SINGLETHREADED, RoInitialize},
+            WinRT::{RO_INIT_MULTITHREADED, RO_INIT_SINGLETHREADED, RoInitialize},
             WindowsProgramming::MulDiv,
         },
         UI::{
@@ -44,8 +49,7 @@ fn main() -> Result<()> {
     unsafe {
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)?;
     }
-    unsafe { RoInitialize(RO_INIT_SINGLETHREADED)? };
-    let controller = create_dispatcher_queue_controller_for_current_thread()?;
+    unsafe { RoInitialize(RO_INIT_MULTITHREADED)? };
 
     // TODO: From args
     let monitor_handle =
@@ -78,15 +82,40 @@ fn main() -> Result<()> {
     let window_x = ((work_area_width - window_width) / 2) + work_area.left;
     let window_y = ((work_area_height - window_height) / 2) + work_area.top;
 
+    // Create the UI thread
+    let ui_thread = DispatcherQueueController::CreateOnDedicatedThread()?;
+    let ui_queue = ui_thread.DispatcherQueue()?;
+
+    // Create our dummy window
+    let window = {
+        let (sender, receiver) = channel();
+        ui_queue.TryEnqueue(&DispatcherQueueHandler::new(move || -> Result<()> {
+            let result = Window::new(
+                "Dummy Content",
+                window_x,
+                window_y,
+                window_width as u32,
+                window_height as u32,
+            );
+            sender.send(result).unwrap();
+            Ok(())
+        }))?;
+        let window = receiver.recv().unwrap()?;
+        window
+    };
+
     // Create our dummy content
-    let window = Window::new(
-        "Dummy Content",
-        window_x,
-        window_y,
-        window_width as u32,
-        window_height as u32,
-    )?;
-    let compositor = Compositor::new()?;
+    let compositor_controller = {
+        let (sender, receiver) = channel();
+        ui_queue.TryEnqueue(&DispatcherQueueHandler::new(move || -> Result<()> {
+            let result = CompositorController::new();
+            sender.send(result).unwrap();
+            Ok(())
+        }))?;
+        let compositor_controller = receiver.recv().unwrap()?;
+        compositor_controller
+    };
+    let compositor = compositor_controller.Compositor()?;
     let root = compositor.CreateSpriteVisual()?;
     root.SetRelativeSizeAdjustment(Vector2::new(1.0, 1.0))?;
     root.SetBrush(&compositor.CreateColorBrushWithColor(Color {
@@ -121,6 +150,7 @@ fn main() -> Result<()> {
     animation.SetDuration(Duration::from_secs(3).into())?;
     animation.SetIterationBehavior(AnimationIterationBehavior::Forever)?;
     content.StartAnimation(h!("RotationAngleInDegrees"), &animation)?;
+    compositor_controller.Commit()?;
 
     // Show the window
     window.show();
@@ -128,19 +158,17 @@ fn main() -> Result<()> {
     // TODO: Configurable
     let test_duration = Duration::from_secs(5);
 
-    // TODO: Record baseline
+    // Get the DWM's pid
+    let pid = get_current_dwm_pid()?;
+
+    // Record baseline
+    let baseline_samples = PerfSession::run_on_thread(&ui_queue, test_duration, pid, None)?;
+
     // TODO: Record WGC
     // TODO: Record DDA
 
-    let mut message = MSG::default();
-    unsafe {
-        while GetMessageW(&mut message, None, 0, 0).into() {
-            let _ = TranslateMessage(&message);
-            DispatchMessageW(&message);
-        }
-    }
     // TODO: Cleanup
-    let _ = shutdown_dispatcher_queue_controller_and_wait(&controller, message.wParam.0 as i32)?;
+    ui_thread.ShutdownQueueAsync()?.get()?;
 
     Ok(())
 }
