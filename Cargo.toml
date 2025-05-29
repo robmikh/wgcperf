@@ -1,6 +1,8 @@
 [package]
 name = "wgcperf"
 version = "0.1.0"
+authors = ["robmikh <rob.mikh@outlook.com>"]
+description = "A utility to record DWM GPU utilization while using WGC and DDA."
 edition = "2024"
 
 [dependencies]
@@ -9,6 +11,7 @@ windows-future = "=0.2.1"
 windows-numerics = "=0.2.0"
 processdumper = { git = "https://github.com/robmikh/dwmdumper", rev = "cded4243a704142f2dcc2b3b00870ba785f182c5" }
 #processdumper = { path = "../dwmdumper/processdumper" }
+clap = { version = "4.5.39", features = [ "derive" ] }
 
 [dependencies.windows]
 version = "0.61.1"

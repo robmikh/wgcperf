@@ -43,6 +43,7 @@ impl Clone for Event {
     }
 }
 
+#[allow(dead_code)]
 pub enum EventTimeout {
     None,
     Infinite,

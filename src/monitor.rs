@@ -116,7 +116,7 @@ unsafe extern "system" fn enum_display_monitors(
 }
 
 pub struct Monitor {
-    device_name: String,
+    _device_name: String,
     display_name: String,
     display_frequency: u32,
     handle: HMONITOR,
@@ -159,7 +159,7 @@ impl Monitor {
             let display_frequency = dev_mode.dmDisplayFrequency;
 
             monitors.push(Monitor {
-                device_name,
+                _device_name: device_name,
                 display_name,
                 display_frequency,
                 handle,

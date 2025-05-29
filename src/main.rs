@@ -1,4 +1,5 @@
 mod adapter;
+mod cli;
 mod monitor;
 mod pdh;
 mod perf;
@@ -11,6 +12,8 @@ mod windows_utils;
 use std::{sync::mpsc::channel, time::Duration};
 
 use adapter::Adapter;
+use clap::Parser;
+use cli::Cli;
 use monitor::Monitor;
 use perf_session::PerfSession;
 use pid::get_current_dwm_pid;
@@ -23,10 +26,9 @@ use windows::{
         Composition::{AnimationIterationBehavior, Core::CompositorController},
     },
     Win32::{
-        Foundation::HWND,
         Graphics::{
             Dxgi::{CreateDXGIFactory1, IDXGIAdapter1, IDXGIFactory1, IDXGIOutput1},
-            Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MONITORINFO, MonitorFromWindow},
+            Gdi::{GetMonitorInfoW, MONITORINFO},
         },
         System::{
             WinRT::{RO_INIT_MULTITHREADED, RoInitialize},
@@ -47,17 +49,23 @@ use windows_utils::{
 };
 
 fn main() -> Result<()> {
-    // TODO: Parse args
+    // Cli
+    let args = Cli::parse();
+    let monitor_index = args.monitor;
+    let test_duration = Duration::from_micros(args.duration);
+    let rest_duration = Duration::from_secs(args.rest);
+    let verbose = args.verbose;
 
     unsafe {
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)?;
     }
     unsafe { RoInitialize(RO_INIT_MULTITHREADED)? };
 
-    // TODO: From args
     let monitors = Monitor::enumerate_all()?;
-    let monitor_handle =
-        unsafe { MonitorFromWindow(HWND(std::ptr::null_mut()), MONITOR_DEFAULTTOPRIMARY) };
+    let monitor = monitors
+        .get(monitor_index)
+        .expect("Provided monitor index is out of bounds!");
+    let monitor_handle = monitor.handle();
     let monitor_info = unsafe {
         let mut info = MONITORINFO::default();
         info.cbSize = std::mem::size_of_val(&info) as u32;
@@ -65,11 +73,6 @@ fn main() -> Result<()> {
         info
     };
     let work_area = monitor_info.rcWork;
-    let monitor_index = monitors
-        .iter()
-        .position(|x| x.handle() == monitor_handle)
-        .expect("Failed to find monitor information!");
-    let monitor = &monitors[monitor_index];
     println!("Monitor details:");
     println!("  index: {}", monitor_index);
     println!("  handle: {:010X}", monitor_handle.0 as usize);
@@ -185,12 +188,6 @@ fn main() -> Result<()> {
         })
         .expect("Couldn't find the adapter for the given monitor!");
     let d3d_device = create_d3d_device_on_adapter(&adapter)?;
-
-    // TODO: Configurable
-    let test_duration = Duration::from_secs(5);
-    let rest_duration = Duration::from_secs(1);
-    let verbose = false;
-    let _output_dir = std::env::current_dir().unwrap();
 
     // Get the DWM's pid
     let pid = get_current_dwm_pid()?;
