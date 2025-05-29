@@ -17,7 +17,7 @@ pub struct PerfTracker {
 }
 
 impl PerfTracker {
-    pub fn new(process_id: u32, luid: Option<LUID>) -> Result<Self> {
+    pub fn new(process_id: u32, luid: Option<LUID>, verbose: bool) -> Result<Self> {
         let counter_path = if let Some(luid) = luid {
             format!(
                 r#"\GPU Engine(pid_{}_luid_{:#010X}_{:#010X}*engtype_3D)\Utilization Percentage"#,
@@ -29,10 +29,12 @@ impl PerfTracker {
                 process_id
             )
         };
-        println!("Search path: {}", counter_path);
+        if verbose {
+            println!("Search path: {}", counter_path);
+        }
 
         let query_handle = PerfQueryHandle::open_query()?;
-        let counter_handles = add_perf_counters(&query_handle, &counter_path)?;
+        let counter_handles = add_perf_counters(&query_handle, &counter_path, verbose)?;
 
         Ok(Self {
             query_handle,

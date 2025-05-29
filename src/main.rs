@@ -1,3 +1,4 @@
+mod adapter;
 mod pdh;
 mod perf;
 mod perf_session;
@@ -7,33 +8,30 @@ mod windows_utils;
 
 use std::{sync::mpsc::channel, time::Duration};
 
+use adapter::Adapter;
 use perf_session::PerfSession;
 use pid::get_current_dwm_pid;
 use window::Window;
 use windows::{
-    System::{DispatcherQueueController, DispatcherQueueHandler},
-    UI::{
-        Color,
-        Composition::{AnimationIterationBehavior, Compositor, Core::CompositorController},
-    },
-    Win32::{
+    core::{h, Result}, System::{DispatcherQueueController, DispatcherQueueHandler}, Win32::{
         Foundation::HWND,
-        Graphics::Gdi::{
-            GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MONITORINFO, MonitorFromWindow,
-        },
+        Graphics::{Dxgi::{CreateDXGIFactory1, IDXGIFactory1}, Gdi::{
+            GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTOPRIMARY
+        }},
         System::{
-            WinRT::{RO_INIT_MULTITHREADED, RO_INIT_SINGLETHREADED, RoInitialize},
+            WinRT::{RoInitialize, RO_INIT_MULTITHREADED, RO_INIT_SINGLETHREADED},
             WindowsProgramming::MulDiv,
         },
         UI::{
             HiDpi::{
-                DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, GetDpiForMonitor, MDT_EFFECTIVE_DPI,
-                SetProcessDpiAwarenessContext,
+                GetDpiForMonitor, SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, MDT_EFFECTIVE_DPI
             },
-            WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, TranslateMessage},
+            WindowsAndMessaging::{DispatchMessageW, GetMessageW, TranslateMessage, MSG},
         },
-    },
-    core::{Result, h},
+    }, UI::{
+        Color,
+        Composition::{AnimationIterationBehavior, Compositor, Core::CompositorController},
+    }
 };
 use windows_numerics::{Vector2, Vector3};
 use windows_utils::{
@@ -157,12 +155,36 @@ fn main() -> Result<()> {
 
     // TODO: Configurable
     let test_duration = Duration::from_secs(5);
+    let verbose = false;
 
     // Get the DWM's pid
     let pid = get_current_dwm_pid()?;
 
+    // Collect all adapters
+    let dxgi_factory: IDXGIFactory1 = unsafe { CreateDXGIFactory1()? };
+    let adapters = Adapter::from_dxgi_factory(&dxgi_factory)?;
+    println!("Adapters:");
+    for (i, adapter) in adapters.iter().enumerate() {
+        println!("  {} - {}", i, adapter.name);
+    }
+    println!();
+
     // Record baseline
-    let baseline_samples = PerfSession::run_on_thread(&ui_queue, test_duration, pid, None)?;
+    println!("Recording baseline...");
+    let baseline_samples = PerfSession::run_on_thread(&ui_queue, test_duration, pid, &adapters, verbose)?;
+    let averages: Vec<_> = baseline_samples.iter().map(|x| {
+        if !x.is_empty() {
+            let sum: f64 = x.iter().sum();
+            sum / x.len() as f64
+        } else {
+            0.0
+        }
+    }).collect();
+    println!("Average GPU 3D engine utilization by adapter:");
+    for (i, (adapter, utilization)) in adapters.iter().zip(averages).enumerate() {
+        println!("  {} - {:6.2}% - {}", i, utilization, adapter.name);
+    }
+    println!();
 
     // TODO: Record WGC
     // TODO: Record DDA

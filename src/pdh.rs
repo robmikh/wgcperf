@@ -179,6 +179,7 @@ impl Drop for PerfQueryHandle {
 pub fn add_perf_counters(
     query_handle: &PerfQueryHandle,
     wildcard_path: &str,
+    verbose: bool,
 ) -> Result<Vec<PDH_HCOUNTER>> {
     let counter_handles: Vec<PDH_HCOUNTER> = unsafe {
         let mut counter_handle = PDH_HCOUNTER::default();
@@ -235,7 +236,9 @@ pub fn add_perf_counters(
 
         let mut counter_handles = Vec::new();
         for path in &paths {
-            println!("Full path: {}", path);
+            if verbose {
+                println!("Full path: {}", path);
+            }
             let mut counter_handle = PDH_HCOUNTER::default();
             PDH_FUNCTION(PdhAddCounterW(query_handle.0, path, 0, &mut counter_handle)).ok()?;
             counter_handles.push(counter_handle);
