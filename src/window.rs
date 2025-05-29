@@ -29,7 +29,7 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(title: &str, width: u32, height: u32) -> Result<Box<Self>> {
+    pub fn new(title: &str, x: i32, y: i32, width: u32, height: u32) -> Result<Box<Self>> {
         let instance = unsafe { GetModuleHandleW(None)? };
         REGISTER_WINDOW_CLASS.call_once(|| {
             let class = WNDCLASSW {
@@ -55,8 +55,8 @@ impl Window {
                 WINDOW_CLASS_NAME,
                 &HSTRING::from(title),
                 window_style,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
+                x,
+                y,
                 width as i32,
                 height as i32,
                 None,
@@ -65,39 +65,7 @@ impl Window {
                 Some(result.as_mut() as *mut _ as _),
             )?
         };
-
-        let dpi = unsafe { GetDpiForWindow(window) };
-
-        let (adjusted_width, adjusted_height) = {
-            let mut rect = RECT {
-                left: 0,
-                top: 0,
-                right: width as i32,
-                bottom: height as i32,
-            };
-            unsafe {
-                AdjustWindowRectExForDpi(&mut rect, window_style, false, window_ex_style, dpi)?;
-            }
-            (rect.right - rect.left, rect.bottom - rect.top)
-        };
-        // For some reason, we will get scaled *down* by the dpi instead of using the values we pass into SetWindowPos...?
-        let (adjusted_width, adjusted_height) = unsafe {
-            (
-                MulDiv(adjusted_width, dpi as i32, 96),
-                MulDiv(adjusted_height, dpi as i32, 96),
-            )
-        };
-        unsafe {
-            SetWindowPos(
-                window,
-                None,
-                0,
-                0,
-                adjusted_width,
-                adjusted_height,
-                SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOZORDER,
-            )?;
-        }
+        assert!(window == result.handle());
 
         Ok(result)
     }

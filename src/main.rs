@@ -4,21 +4,53 @@ mod windows_utils;
 use std::time::Duration;
 
 use window::Window;
-use windows::{core::{h, Result}, Win32::{System::WinRT::{RoInitialize, RO_INIT_SINGLETHREADED}, UI::{HiDpi::{SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2}, WindowsAndMessaging::{DispatchMessageW, GetMessageW, TranslateMessage, MSG}}}, UI::{Color, Composition::{AnimationIterationBehavior, Compositor}}};
+use windows::{core::{h, Result}, Win32::{Foundation::HWND, Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITORINFOEXW, MONITOR_DEFAULTTOPRIMARY}, System::{WinRT::{RoInitialize, RO_INIT_SINGLETHREADED}, WindowsProgramming::MulDiv}, UI::{HiDpi::{GetDpiForMonitor, SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, MDT_EFFECTIVE_DPI}, WindowsAndMessaging::{DispatchMessageW, GetMessageW, TranslateMessage, MSG}}}, UI::{Color, Composition::{AnimationIterationBehavior, Compositor}}};
 use windows_numerics::{Vector2, Vector3};
 use windows_utils::{composition::CompositionInterop, dispatcher_queue::shutdown_dispatcher_queue_controller_and_wait};
 
 use crate::windows_utils::dispatcher_queue::create_dispatcher_queue_controller_for_current_thread;
 
 fn main() -> Result<()> {
+    // TODO: Parse args
+
     unsafe {
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)?;
     }
     unsafe { RoInitialize(RO_INIT_SINGLETHREADED)? };
     let controller = create_dispatcher_queue_controller_for_current_thread()?;
 
+    // TODO: From args
+    let monitor_handle = unsafe { MonitorFromWindow(HWND(std::ptr::null_mut()), MONITOR_DEFAULTTOPRIMARY) };
+    let monitor_info = unsafe {
+        let mut info = MONITORINFO::default();
+        info.cbSize = std::mem::size_of_val(&info) as u32;
+        GetMonitorInfoW(monitor_handle, &mut info).ok()?;
+        info
+    };
+    let work_area = monitor_info.rcWork;
+    println!("Monitor details:");
+    println!("  handle: {:010X}", monitor_handle.0 as usize);
+    // TODO: Monitor index
+    // TODO: Display name
+    // TODO: Refresh rate
+
+    // Compute window position
+    let dpi = unsafe { 
+        let mut dpix = 0;
+        let mut dpiy = 0;
+        GetDpiForMonitor(monitor_handle, MDT_EFFECTIVE_DPI, &mut dpix, &mut dpiy)?;
+        assert_eq!(dpix, dpiy);
+        dpix 
+    };
+    let window_width = unsafe { MulDiv(500, dpi as i32, 96) };
+    let window_height = unsafe { MulDiv(500, dpi as i32, 96) };
+    let work_area_width = work_area.right - work_area.left;
+    let work_area_height = work_area.bottom - work_area.top;
+    let window_x = ((work_area_width - window_width) / 2) + work_area.left;
+    let window_y = ((work_area_height - window_height) / 2) + work_area.top;
+
     // Create our dummy content
-    let window = Window::new("Dummy Content", 500, 500)?;
+    let window = Window::new("Dummy Content", window_x, window_y, window_width as u32, window_height as u32)?;
     let compositor = Compositor::new()?;
     let root = compositor.CreateSpriteVisual()?;
     root.SetRelativeSizeAdjustment(Vector2::new(1.0, 1.0))?;
@@ -31,7 +63,7 @@ fn main() -> Result<()> {
     root.Children()?.InsertAtTop(&content)?;
     let target = compositor.create_desktop_window_target(window.handle(), false)?;
     target.SetRoot(&root)?;
-    
+
     // Animate the content
     let easing = compositor.CreateLinearEasingFunction()?;
     let animation = compositor.CreateScalarKeyFrameAnimation()?;
