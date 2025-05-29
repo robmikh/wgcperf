@@ -4,4 +4,5 @@ pub mod d3d;
 pub mod dispatcher_queue;
 pub mod dwrite;
 pub mod dxgi;
+pub mod event;
 pub mod numerics;

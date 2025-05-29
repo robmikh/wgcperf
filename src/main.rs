@@ -12,7 +12,7 @@ use std::{sync::mpsc::channel, time::Duration};
 use adapter::Adapter;
 use perf_session::PerfSession;
 use pid::get_current_dwm_pid;
-use sinks::{CaptureSink, wgc::WgcCaptureSink};
+use sinks::{CaptureSink, dda::DdaCaptureSink, wgc::WgcCaptureSink};
 use window::Window;
 use windows::{
     System::{DispatcherQueue, DispatcherQueueController, DispatcherQueueHandler},
@@ -23,7 +23,7 @@ use windows::{
     Win32::{
         Foundation::HWND,
         Graphics::{
-            Dxgi::{CreateDXGIFactory1, IDXGIAdapter1, IDXGIFactory1},
+            Dxgi::{CreateDXGIFactory1, IDXGIAdapter1, IDXGIFactory1, IDXGIOutput1},
             Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MONITORINFO, MonitorFromWindow},
         },
         System::{
@@ -38,7 +38,7 @@ use windows::{
             WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, TranslateMessage},
         },
     },
-    core::{Result, h},
+    core::{Interface, Result, h},
 };
 use windows_numerics::{Vector2, Vector3};
 use windows_utils::{
@@ -224,7 +224,19 @@ fn main() -> Result<()> {
         verbose,
     )?;
 
-    // TODO: Record DDA
+    // Record DDA
+    println!("Recording DDA...");
+    let output: IDXGIOutput1 = output.cast()?;
+    let mut dda_sink = DdaCaptureSink::new(&d3d_device, output)?;
+    let dda_samples = run_and_print_test(
+        &mut dda_sink,
+        &ui_queue,
+        test_duration,
+        rest_duration,
+        pid,
+        &adapters,
+        verbose,
+    )?;
 
     // TODO: Cleanup
     ui_thread.ShutdownQueueAsync()?.get()?;
