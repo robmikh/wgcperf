@@ -141,12 +141,12 @@ impl Drop for PerfSessionInner {
 
 impl PerfTrackerBundle {
     fn new(adapter_luids: &[LUID], pid: u32, verbose: bool) -> Result<Self> {
-        let trackers: Vec<_> = adapter_luids.iter().map(|x| PerfTracker::new(pid, Some(*x), verbose).ok()).collect();
+        let trackers: Vec<_> = adapter_luids
+            .iter()
+            .map(|x| PerfTracker::new(pid, Some(*x), verbose).ok())
+            .collect();
         let samples = vec![Vec::new(); trackers.len()];
-        Ok(Self {
-            trackers,
-            samples,
-        })
+        Ok(Self { trackers, samples })
     }
 
     fn start(&self) -> Result<()> {

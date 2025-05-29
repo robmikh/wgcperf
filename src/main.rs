@@ -13,25 +13,30 @@ use perf_session::PerfSession;
 use pid::get_current_dwm_pid;
 use window::Window;
 use windows::{
-    core::{h, Result}, System::{DispatcherQueueController, DispatcherQueueHandler}, Win32::{
+    System::{DispatcherQueueController, DispatcherQueueHandler},
+    UI::{
+        Color,
+        Composition::{AnimationIterationBehavior, Compositor, Core::CompositorController},
+    },
+    Win32::{
         Foundation::HWND,
-        Graphics::{Dxgi::{CreateDXGIFactory1, IDXGIFactory1}, Gdi::{
-            GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTOPRIMARY
-        }},
+        Graphics::{
+            Dxgi::{CreateDXGIFactory1, IDXGIFactory1},
+            Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MONITORINFO, MonitorFromWindow},
+        },
         System::{
-            WinRT::{RoInitialize, RO_INIT_MULTITHREADED, RO_INIT_SINGLETHREADED},
+            WinRT::{RO_INIT_MULTITHREADED, RO_INIT_SINGLETHREADED, RoInitialize},
             WindowsProgramming::MulDiv,
         },
         UI::{
             HiDpi::{
-                GetDpiForMonitor, SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, MDT_EFFECTIVE_DPI
+                DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, GetDpiForMonitor, MDT_EFFECTIVE_DPI,
+                SetProcessDpiAwarenessContext,
             },
-            WindowsAndMessaging::{DispatchMessageW, GetMessageW, TranslateMessage, MSG},
+            WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, TranslateMessage},
         },
-    }, UI::{
-        Color,
-        Composition::{AnimationIterationBehavior, Compositor, Core::CompositorController},
-    }
+    },
+    core::{Result, h},
 };
 use windows_numerics::{Vector2, Vector3};
 use windows_utils::{
@@ -171,15 +176,19 @@ fn main() -> Result<()> {
 
     // Record baseline
     println!("Recording baseline...");
-    let baseline_samples = PerfSession::run_on_thread(&ui_queue, test_duration, pid, &adapters, verbose)?;
-    let averages: Vec<_> = baseline_samples.iter().map(|x| {
-        if !x.is_empty() {
-            let sum: f64 = x.iter().sum();
-            sum / x.len() as f64
-        } else {
-            0.0
-        }
-    }).collect();
+    let baseline_samples =
+        PerfSession::run_on_thread(&ui_queue, test_duration, pid, &adapters, verbose)?;
+    let averages: Vec<_> = baseline_samples
+        .iter()
+        .map(|x| {
+            if !x.is_empty() {
+                let sum: f64 = x.iter().sum();
+                sum / x.len() as f64
+            } else {
+                0.0
+            }
+        })
+        .collect();
     println!("Average GPU 3D engine utilization by adapter:");
     for (i, (adapter, utilization)) in adapters.iter().zip(averages).enumerate() {
         println!("  {} - {:6.2}% - {}", i, utilization, adapter.name);

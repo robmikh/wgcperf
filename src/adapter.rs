@@ -1,9 +1,9 @@
 use windows::{
-    core::Result,
     Win32::{
         Foundation::LUID,
         Graphics::Dxgi::{IDXGIAdapter1, IDXGIFactory1},
     },
+    core::Result,
 };
 
 use crate::windows_utils::dxgi::DxgiAdapterIter;
