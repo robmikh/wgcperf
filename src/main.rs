@@ -232,8 +232,11 @@ fn main() -> Result<()> {
         verbose,
     )?;
 
-    // TODO: Cleanup
+    // Shut down the UI thread and the window
+    window.close();
     ui_thread.ShutdownQueueAsync()?.get()?;
+
+    // TODO: Save samples
 
     Ok(())
 }

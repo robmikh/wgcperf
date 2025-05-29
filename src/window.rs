@@ -8,10 +8,10 @@ use windows::{
         UI::WindowsAndMessaging::{
             CREATESTRUCTW, CreateWindowExW, DefWindowProcW, DestroyWindow, GWLP_USERDATA,
             GetClientRect, GetWindowLongPtrW, IDC_ARROW, LoadCursorW, PostQuitMessage,
-            RegisterClassW, SW_SHOW, SWP_NOACTIVATE, SWP_NOZORDER, SetWindowLongPtrW, SetWindowPos,
-            ShowWindow, WM_DESTROY, WM_DPICHANGED, WM_LBUTTONDOWN, WM_MOUSEMOVE, WM_NCCREATE,
-            WM_RBUTTONDOWN, WM_SIZE, WM_SIZING, WNDCLASSW, WS_EX_NOREDIRECTIONBITMAP,
-            WS_OVERLAPPEDWINDOW,
+            RegisterClassW, SW_SHOW, SWP_NOACTIVATE, SWP_NOZORDER, SendMessageW, SetWindowLongPtrW,
+            SetWindowPos, ShowWindow, WM_DESTROY, WM_DPICHANGED, WM_LBUTTONDOWN, WM_MOUSEMOVE,
+            WM_NCCREATE, WM_RBUTTONDOWN, WM_SIZE, WM_SIZING, WM_USER, WNDCLASSW,
+            WS_EX_NOREDIRECTIONBITMAP, WS_OVERLAPPEDWINDOW,
         },
     },
     core::{HSTRING, PCWSTR, Result, w},
@@ -20,6 +20,8 @@ use windows_numerics::Vector2;
 
 static REGISTER_WINDOW_CLASS: Once = Once::new();
 const WINDOW_CLASS_NAME: PCWSTR = w!("wgcperf.DummyWindow");
+
+const CLOSE_WINDOW_MESSAGE: u32 = WM_USER + 1;
 
 pub struct Window {
     handle: HWND,
@@ -84,9 +86,15 @@ impl Window {
         };
     }
 
+    pub fn close(&self) {
+        unsafe {
+            let _ = SendMessageW(self.handle, CLOSE_WINDOW_MESSAGE, None, None);
+        }
+    }
+
     fn message_handler(&mut self, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
         match message {
-            WM_DESTROY => {
+            CLOSE_WINDOW_MESSAGE | WM_DESTROY => {
                 unsafe { PostQuitMessage(0) };
                 return LRESULT(0);
             }

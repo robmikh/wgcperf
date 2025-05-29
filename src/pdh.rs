@@ -172,7 +172,7 @@ impl PerfQueryHandle {
 
 impl Drop for PerfQueryHandle {
     fn drop(&mut self) {
-        self.close_query().unwrap();
+        let _ = self.close_query();
     }
 }
 
