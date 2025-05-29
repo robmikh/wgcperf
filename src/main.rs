@@ -301,7 +301,8 @@ fn run_and_print_test<C: CaptureSink>(
 ) -> Result<Vec<(f64, Vec<f64>)>> {
     sink.start()?;
     let samples = run_test(&thread, test_duration, pid, &adapters, verbose)?;
-    sink.stop()?;
+    let num_frames = sink.stop()?;
+    println!("Captured {} frames", num_frames);
     print_averages(&adapters, &samples);
     println!();
     std::thread::sleep(rest_duration);

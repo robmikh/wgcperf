@@ -1,4 +1,7 @@
-use std::thread::JoinHandle;
+use std::{
+    sync::{Arc, atomic::AtomicUsize},
+    thread::JoinHandle,
+};
 
 use windows::{
     Win32::Graphics::{
@@ -18,6 +21,7 @@ pub struct DdaCaptureSink {
     duplication: Option<IDXGIOutputDuplication>,
     stop_event: Event,
     capture_thread: Option<JoinHandle<Result<()>>>,
+    num_frames: Arc<AtomicUsize>,
 }
 
 struct DuplicationSmuggler(IDXGIOutputDuplication);
@@ -33,6 +37,7 @@ impl DdaCaptureSink {
             duplication: None,
             stop_event: event,
             capture_thread: None,
+            num_frames: Arc::new(AtomicUsize::new(0)),
         })
     }
 }
@@ -44,6 +49,7 @@ impl CaptureSink for DdaCaptureSink {
             let capture_thread = std::thread::spawn({
                 let duplication = DuplicationSmuggler(duplication.clone());
                 let event = self.stop_event.clone();
+                let num_frames = self.num_frames.clone();
                 move || -> Result<()> {
                     let mut frame_info = DXGI_OUTDUPL_FRAME_INFO::default();
                     let mut resource = None;
@@ -54,6 +60,7 @@ impl CaptureSink for DdaCaptureSink {
                                 .AcquireNextFrame(100, &mut frame_info, &mut resource)?
                         };
                         resource = None;
+                        num_frames.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                         unsafe {
                             duplication.0.ReleaseFrame()?;
                         }
@@ -67,12 +74,15 @@ impl CaptureSink for DdaCaptureSink {
         Ok(())
     }
 
-    fn stop(&mut self) -> windows::core::Result<()> {
-        if let Some(thread) = self.capture_thread.take() {
+    fn stop(&mut self) -> windows::core::Result<usize> {
+        let num_frames = if let Some(thread) = self.capture_thread.take() {
             self.stop_event.signal()?;
             thread.join().unwrap()?;
             self.duplication = None;
-        }
-        Ok(())
+            self.num_frames.load(std::sync::atomic::Ordering::SeqCst)
+        } else {
+            0
+        };
+        Ok(num_frames)
     }
 }

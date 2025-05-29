@@ -1,3 +1,5 @@
+use std::sync::{Arc, atomic::AtomicUsize};
+
 use windows::{
     Foundation::TypedEventHandler,
     Graphics::{
@@ -22,6 +24,7 @@ pub struct WgcCaptureSink {
     _item: GraphicsCaptureItem,
     session: GraphicsCaptureSession,
     frame_pool: Direct3D11CaptureFramePool,
+    num_frames: Arc<AtomicUsize>,
 }
 
 impl WgcCaptureSink {
@@ -32,20 +35,23 @@ impl WgcCaptureSink {
     ) -> Result<Self> {
         let device = create_direct3d_device(d3d_device)?;
         let item = create_capture_item_for_monitor(monitor)?;
+        let num_frames = Arc::new(AtomicUsize::new(0));
         let frame_pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
             &device,
             DirectXPixelFormat::B8G8R8A8UIntNormalized,
             3,
             item.Size()?,
         )?;
-        frame_pool.FrameArrived(&TypedEventHandler::<Direct3D11CaptureFramePool, _>::new(
-            |frame_pool, _| -> Result<()> {
+        frame_pool.FrameArrived(&TypedEventHandler::<Direct3D11CaptureFramePool, _>::new({
+            let num_frames = num_frames.clone();
+            move |frame_pool, _| -> Result<()> {
                 let frame_pool: &Direct3D11CaptureFramePool = frame_pool.unwrap();
                 let frame = frame_pool.TryGetNextFrame()?;
+                num_frames.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 frame.Close()?;
                 Ok(())
-            },
-        ))?;
+            }
+        }))?;
         let session = frame_pool.CreateCaptureSession(&item)?;
         session.SetIsBorderRequired(false)?;
         session.SetIsCursorCaptureEnabled(false)?;
@@ -56,6 +62,7 @@ impl WgcCaptureSink {
             _item: item,
             session,
             frame_pool,
+            num_frames,
         })
     }
 }
@@ -66,10 +73,11 @@ impl CaptureSink for WgcCaptureSink {
         Ok(())
     }
 
-    fn stop(&mut self) -> Result<()> {
+    fn stop(&mut self) -> Result<usize> {
         self.session.Close()?;
         self.frame_pool.Close()?;
-        Ok(())
+        let num_frames = self.num_frames.load(std::sync::atomic::Ordering::SeqCst);
+        Ok(num_frames)
     }
 }
 
