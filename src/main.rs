@@ -52,8 +52,8 @@ fn main() -> Result<()> {
     // Cli
     let args = Cli::parse();
     let monitor_index = args.monitor;
-    let test_duration = Duration::from_micros(args.duration);
-    let rest_duration = Duration::from_secs(args.rest);
+    let test_duration = Duration::from_millis(args.duration);
+    let rest_duration = Duration::from_millis(args.rest);
     let verbose = args.verbose;
 
     unsafe {
