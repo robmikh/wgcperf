@@ -1,6 +1,6 @@
 [package]
 name = "wgcperf"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["robmikh <rob.mikh@outlook.com>"]
 description = "A utility to record DWM GPU utilization while using WGC and DDA."
 edition = "2024"
