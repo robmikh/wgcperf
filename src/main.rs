@@ -3,6 +3,7 @@ mod pdh;
 mod perf;
 mod perf_session;
 mod pid;
+mod sinks;
 mod window;
 mod windows_utils;
 
@@ -11,9 +12,10 @@ use std::{sync::mpsc::channel, time::Duration};
 use adapter::Adapter;
 use perf_session::PerfSession;
 use pid::get_current_dwm_pid;
+use sinks::{CaptureSink, wgc::WgcCaptureSink};
 use window::Window;
 use windows::{
-    System::{DispatcherQueueController, DispatcherQueueHandler},
+    System::{DispatcherQueue, DispatcherQueueController, DispatcherQueueHandler},
     UI::{
         Color,
         Composition::{AnimationIterationBehavior, Compositor, Core::CompositorController},
@@ -21,7 +23,7 @@ use windows::{
     Win32::{
         Foundation::HWND,
         Graphics::{
-            Dxgi::{CreateDXGIFactory1, IDXGIFactory1},
+            Dxgi::{CreateDXGIFactory1, IDXGIAdapter1, IDXGIFactory1},
             Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MONITORINFO, MonitorFromWindow},
         },
         System::{
@@ -41,7 +43,9 @@ use windows::{
 use windows_numerics::{Vector2, Vector3};
 use windows_utils::{
     composition::CompositionInterop,
+    d3d::{create_d3d_device, create_d3d_device_on_adapter},
     dispatcher_queue::shutdown_dispatcher_queue_controller_and_wait,
+    dxgi::{DxgiAdapterIter, DxgiOutputIter},
 };
 
 use crate::windows_utils::dispatcher_queue::create_dispatcher_queue_controller_for_current_thread;
@@ -158,16 +162,43 @@ fn main() -> Result<()> {
     // Show the window
     window.show();
 
+    // Initialize D3D
+    let dxgi_factory: IDXGIFactory1 = unsafe { CreateDXGIFactory1()? };
+    let dxgi_adapters: Vec<IDXGIAdapter1> = dxgi_factory.iter_adapters().collect();
+    let (adapter, output) = dxgi_adapters
+        .iter()
+        .find_map(|adapter| {
+            if let Some(output) = adapter.iter_outputs().find(|output| {
+                if let Ok(desc) = unsafe { output.GetDesc() } {
+                    desc.Monitor == monitor_handle
+                } else {
+                    false
+                }
+            }) {
+                Some((adapter.clone(), output))
+            } else {
+                None
+            }
+        })
+        .expect("Couldn't find the adapter for the given monitor!");
+    let d3d_device = create_d3d_device_on_adapter(&adapter)?;
+
     // TODO: Configurable
     let test_duration = Duration::from_secs(5);
+    let rest_duration = Duration::from_secs(1);
     let verbose = false;
 
     // Get the DWM's pid
     let pid = get_current_dwm_pid()?;
 
     // Collect all adapters
-    let dxgi_factory: IDXGIFactory1 = unsafe { CreateDXGIFactory1()? };
-    let adapters = Adapter::from_dxgi_factory(&dxgi_factory)?;
+    let adapters = {
+        let mut adapters = Vec::with_capacity(dxgi_adapters.len());
+        for dxgi_adapter in &dxgi_adapters {
+            adapters.push(Adapter::from_dxgi_adapter(&dxgi_adapter)?);
+        }
+        adapters
+    };
     println!("Adapters:");
     for (i, adapter) in adapters.iter().enumerate() {
         println!("  {} - {}", i, adapter.name);
@@ -176,30 +207,73 @@ fn main() -> Result<()> {
 
     // Record baseline
     println!("Recording baseline...");
-    let baseline_samples =
-        PerfSession::run_on_thread(&ui_queue, test_duration, pid, &adapters, verbose)?;
-    let baseline_averages: Vec<_> = baseline_samples
-        .iter()
-        .map(|x| {
-            if !x.is_empty() {
-                let sum: f64 = x.iter().sum();
-                sum / x.len() as f64
-            } else {
-                0.0
-            }
-        })
-        .collect();
-    println!("Average GPU 3D engine utilization by adapter:");
-    for (i, (adapter, utilization)) in adapters.iter().zip(&baseline_averages).enumerate() {
-        println!("  {} - {:6.2}% - {}", i, utilization, adapter.name);
-    }
+    let baseline_samples = run_test(&ui_queue, test_duration, pid, &adapters, verbose)?;
+    print_averages(&adapters, &baseline_samples);
     println!();
 
-    // TODO: Record WGC
+    // Record WGC
+    println!("Recording WGC...");
+    let mut wgc_sink = WgcCaptureSink::new(&d3d_device, monitor_handle)?;
+    let wgc_samples = run_and_print_test(
+        &mut wgc_sink,
+        &ui_queue,
+        test_duration,
+        rest_duration,
+        pid,
+        &adapters,
+        verbose,
+    )?;
+
     // TODO: Record DDA
 
     // TODO: Cleanup
     ui_thread.ShutdownQueueAsync()?.get()?;
 
     Ok(())
+}
+
+fn run_test(
+    thread: &DispatcherQueue,
+    duration: Duration,
+    pid: u32,
+    adapters: &[Adapter],
+    verbose: bool,
+) -> Result<Vec<(f64, Vec<f64>)>> {
+    let mut result = Vec::with_capacity(adapters.len());
+    let samples = PerfSession::run_on_thread(&thread, duration, pid, &adapters, verbose)?;
+    for samples in samples {
+        let average = if !samples.is_empty() {
+            let sum: f64 = samples.iter().sum();
+            sum / samples.len() as f64
+        } else {
+            0.0
+        };
+        result.push((average, samples));
+    }
+    Ok(result)
+}
+
+fn print_averages(adapters: &[Adapter], adapter_samples: &[(f64, Vec<f64>)]) {
+    println!("Average GPU 3D engine utilization by adapter:");
+    for (i, (adapter, (utilization, _))) in adapters.iter().zip(adapter_samples).enumerate() {
+        println!("  {} - {:6.2}% - {}", i, utilization, adapter.name);
+    }
+}
+
+fn run_and_print_test<C: CaptureSink>(
+    sink: &mut C,
+    thread: &DispatcherQueue,
+    test_duration: Duration,
+    rest_duration: Duration,
+    pid: u32,
+    adapters: &[Adapter],
+    verbose: bool,
+) -> Result<Vec<(f64, Vec<f64>)>> {
+    sink.start()?;
+    let samples = run_test(&thread, test_duration, pid, &adapters, verbose)?;
+    sink.stop()?;
+    print_averages(&adapters, &samples);
+    println!();
+    std::thread::sleep(rest_duration);
+    Ok(samples)
 }
