@@ -1,4 +1,5 @@
 mod adapter;
+mod monitor;
 mod pdh;
 mod perf;
 mod perf_session;
@@ -10,6 +11,7 @@ mod windows_utils;
 use std::{sync::mpsc::channel, time::Duration};
 
 use adapter::Adapter;
+use monitor::Monitor;
 use perf_session::PerfSession;
 use pid::get_current_dwm_pid;
 use sinks::{CaptureSink, dda::DdaCaptureSink, wgc::WgcCaptureSink};
@@ -53,6 +55,7 @@ fn main() -> Result<()> {
     unsafe { RoInitialize(RO_INIT_MULTITHREADED)? };
 
     // TODO: From args
+    let monitors = Monitor::enumerate_all()?;
     let monitor_handle =
         unsafe { MonitorFromWindow(HWND(std::ptr::null_mut()), MONITOR_DEFAULTTOPRIMARY) };
     let monitor_info = unsafe {
@@ -62,11 +65,17 @@ fn main() -> Result<()> {
         info
     };
     let work_area = monitor_info.rcWork;
+    let monitor_index = monitors
+        .iter()
+        .position(|x| x.handle() == monitor_handle)
+        .expect("Failed to find monitor information!");
+    let monitor = &monitors[monitor_index];
     println!("Monitor details:");
+    println!("  index: {}", monitor_index);
     println!("  handle: {:010X}", monitor_handle.0 as usize);
-    // TODO: Monitor index
-    // TODO: Display name
-    // TODO: Refresh rate
+    println!("  name: {}", monitor.display_name());
+    println!("  frequency: {} Hz", monitor.display_frequency());
+    println!();
 
     // Compute window position
     let dpi = unsafe {
@@ -181,6 +190,7 @@ fn main() -> Result<()> {
     let test_duration = Duration::from_secs(5);
     let rest_duration = Duration::from_secs(1);
     let verbose = false;
+    let _output_dir = std::env::current_dir().unwrap();
 
     // Get the DWM's pid
     let pid = get_current_dwm_pid()?;
@@ -208,7 +218,7 @@ fn main() -> Result<()> {
     // Record WGC
     println!("Recording WGC...");
     let mut wgc_sink = WgcCaptureSink::new(&d3d_device, monitor_handle)?;
-    let wgc_samples = run_and_print_test(
+    let _wgc_samples = run_and_print_test(
         &mut wgc_sink,
         &ui_queue,
         test_duration,
@@ -222,7 +232,7 @@ fn main() -> Result<()> {
     println!("Recording DDA...");
     let output: IDXGIOutput1 = output.cast()?;
     let mut dda_sink = DdaCaptureSink::new(&d3d_device, output)?;
-    let dda_samples = run_and_print_test(
+    let _dda_samples = run_and_print_test(
         &mut dda_sink,
         &ui_queue,
         test_duration,
