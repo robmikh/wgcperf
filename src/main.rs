@@ -54,6 +54,7 @@ fn main() -> Result<()> {
     let monitor_index = args.monitor;
     let test_duration = Duration::from_millis(args.duration);
     let rest_duration = Duration::from_millis(args.rest);
+    let use_dirty_rects = args.use_dirty_rects;
     let verbose = args.verbose;
     let adhoc_mode = args.adhoc;
 
@@ -218,7 +219,7 @@ fn main() -> Result<()> {
 
         // Record WGC
         println!("Recording WGC...");
-        let mut wgc_sink = WgcCaptureSink::new(&d3d_device, monitor_handle)?;
+        let mut wgc_sink = WgcCaptureSink::new(&d3d_device, monitor_handle, use_dirty_rects)?;
         let _wgc_samples = run_and_print_test(
             &mut wgc_sink,
             &ui_queue,
@@ -245,7 +246,7 @@ fn main() -> Result<()> {
     } else {
         // Run WGC until the user says stop
 
-        let mut wgc_sink = WgcCaptureSink::new(&d3d_device, monitor_handle)?;
+        let mut wgc_sink = WgcCaptureSink::new(&d3d_device, monitor_handle, use_dirty_rects)?;
         wgc_sink.start()?;
         println!("Press ENTER to stop...");
         std::io::Read::read(&mut std::io::stdin(), &mut [0]).unwrap();

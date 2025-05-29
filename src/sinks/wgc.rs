@@ -1,7 +1,10 @@
 use windows::{
     Foundation::TypedEventHandler,
     Graphics::{
-        Capture::{Direct3D11CaptureFramePool, GraphicsCaptureItem, GraphicsCaptureSession},
+        Capture::{
+            Direct3D11CaptureFramePool, GraphicsCaptureDirtyRegionMode, GraphicsCaptureItem,
+            GraphicsCaptureSession,
+        },
         DirectX::DirectXPixelFormat,
     },
     Win32::{
@@ -22,7 +25,11 @@ pub struct WgcCaptureSink {
 }
 
 impl WgcCaptureSink {
-    pub fn new(d3d_device: &ID3D11Device, monitor: HMONITOR) -> Result<Self> {
+    pub fn new(
+        d3d_device: &ID3D11Device,
+        monitor: HMONITOR,
+        use_dirty_rects: bool,
+    ) -> Result<Self> {
         let device = create_direct3d_device(d3d_device)?;
         let item = create_capture_item_for_monitor(monitor)?;
         let frame_pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
@@ -42,6 +49,9 @@ impl WgcCaptureSink {
         let session = frame_pool.CreateCaptureSession(&item)?;
         session.SetIsBorderRequired(false)?;
         session.SetIsCursorCaptureEnabled(false)?;
+        if use_dirty_rects {
+            session.SetDirtyRegionMode(GraphicsCaptureDirtyRegionMode::ReportAndRender)?;
+        }
         Ok(Self {
             _item: item,
             session,

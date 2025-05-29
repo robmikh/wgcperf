@@ -15,6 +15,10 @@ pub struct Cli {
     #[clap(short, long, default_value_t = 1000)]
     pub rest: u64,
 
+    /// Sets the DirtyRegionMode to ReportAndRender (WGC only).
+    #[clap(long)]
+    pub use_dirty_rects: bool,
+
     /// Enables verbose output.
     #[clap(short, long)]
     pub verbose: bool,
